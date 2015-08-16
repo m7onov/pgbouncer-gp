@@ -534,7 +534,72 @@ static bool auth_loaded(const char *fn)
 	cache_set = true;
 	return false;
 }
+#ifdef HAVE_LDAP
+/* file format:
+[multispace or multi\n]username_without_quote[multispace]parameter xxx\n
+[multispace or multi\n]username_without_quote[multispace]parameter xxx[eof]
+ */
+static void load_user_from_ldap_file(const char *fn)
+{
+	char *username, *parameter_line, *buf, *p;
+	PgUser *user;
 
+	buf = load_file(fn, NULL);
+	if (buf == NULL) {
+		log_error("could not open auth_file %s: %s", fn, strerror(errno));
+	}
+
+	log_debug("loading auth_file: \"%s\"", fn);
+
+	p = buf;
+	while (*p) {
+		/* skip whitespace and empty lines */
+		while (*p && isspace(*p)) p++;
+		if (!*p)
+			break;
+
+		/* skip commented-out lines */
+		if (*p == ';' || *p == '#') {
+			while (*p && *p != '\n') p++;
+			continue;
+		}
+
+		username = p;
+		while (*p && (*p != ' ')) p++;
+		if (p - username >= MAX_USERNAME) {
+			log_error("username too long in auth file");
+			break;
+		}
+
+		if(!*p) break; /* only username ,skip */
+		*p++ = 0; /* tag username end */
+		while(*p && (*p == ' ' || *p == '\t')) ++p; /* skip multispace */
+		if(!*p) break; /* only username ,skip */
+
+		/* get password */
+		parameter_line = p;
+		while(*p && *p != '\n') ++p;
+		if (p - parameter_line >= MAX_LDAP_CONFIG) {
+			log_error("parameter_line too long in auth file");
+			break;
+		}
+		if(*p == '\n') *p++ = 0; /* parameter_line end */
+
+		/* send them away */
+		user = add_user(username, "");
+		if(user != NULL) {
+			safe_strcpy(user->ldap_config, parameter_line, MAX_LDAP_CONFIG);
+		}
+	}
+	free(buf);
+}
+void load_ldap_user_config(void)
+{
+	if (cf_ldap_user_file) {
+		load_user_from_ldap_file(cf_ldap_user_file);
+	}
+}
+#endif
 bool loader_users_check(void)
 {
 	if (auth_loaded(cf_auth_file))

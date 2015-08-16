@@ -1555,7 +1555,7 @@ void adns_zone_cache_maint(struct DNSContext *ctx)
 {
 	if (!cf_dns_zone_check_period) {
 		if (ctx->zone_state == 2) {
-			(void) event_del(&ctx->ev_zone_timer);
+			event_del(&ctx->ev_zone_timer);
 			ctx->zone_state = 0;
 		}
 		ctx->cur_zone = NULL;

@@ -537,7 +537,7 @@ PgPool *get_pool(PgDatabase *db, PgUser *user)
 }
 
 /* deactivate socket and put into wait queue */
-void pause_client(PgSocket *client)
+static void pause_client(PgSocket *client)
 {
 	Assert(client->state == CL_ACTIVE || client->state == CL_LOGIN);
 
@@ -1280,25 +1280,6 @@ PgSocket *accept_client(int sock, bool is_unix)
 	}
 
 	return client;
-}
-
-/* send cached parameters to client to pretend being server */
-/* client managed to authenticate, send welcome msg and accept queries */
-bool PrepareServerLogin(PgSocket *client)
-{
-	/* check if we know server signature */
-	if (!client->pool->welcome_msg_ready) {
-		log_debug("finish_client_login: no welcome message, pause");
-		client->wait_for_welcome = 1;
-		pause_client(client);
-		if (cf_pause_mode == P_NONE)
-			launch_new_connection(client->pool);
-		return false;
-	}
-	else {
-		client->wait_for_welcome = 0;
-		return true;
-	}
 }
 
 

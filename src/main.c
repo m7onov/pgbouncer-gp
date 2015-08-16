@@ -82,7 +82,6 @@ int cf_listen_backlog;
 char *cf_unix_socket_dir;
 int cf_unix_socket_mode;
 char *cf_unix_socket_group;
-unsigned int childpid;
 int cf_pool_mode = POOL_SESSION;
 
 /* sbuf config */
@@ -106,6 +105,7 @@ char *cf_auth_file;
 char *cf_auth_hba_file;
 char *cf_auth_user;
 char *cf_auth_query;
+char *cf_ldap_user_file;
 
 int cf_max_client_conn;
 int cf_default_pool_size;
@@ -193,6 +193,9 @@ static const struct CfLookup auth_type_map[] = {
 #ifdef HAVE_PAM
 	{ "pam", AUTH_PAM },
 #endif
+#ifdef HAVE_LDAP
+	{ "ldap", AUTH_LDAP },
+#endif
 	{ "scram-sha-256", AUTH_SCRAM_SHA_256 },
 	{ NULL }
 };
@@ -221,6 +224,7 @@ static const struct CfKey bouncer_params [] = {
 CF_ABS("admin_users", CF_STR, cf_admin_users, 0, ""),
 CF_ABS("application_name_add_host", CF_INT, cf_application_name_add_host, 0, "0"),
 CF_ABS("auth_file", CF_STR, cf_auth_file, 0, NULL),
+CF_ABS("cf_ldap_user_file", CF_STR, cf_ldap_user_file, 0, NULL),
 CF_ABS("auth_hba_file", CF_STR, cf_auth_hba_file, 0, ""),
 CF_ABS("auth_query", CF_STR, cf_auth_query, 0, "SELECT usename, passwd FROM pg_shadow WHERE usename=$1"),
 CF_ABS("auth_type", CF_LOOKUP(auth_type_map), cf_auth_type, 0, "md5"),
@@ -422,8 +426,12 @@ void load_config(void)
 	ok = cf_load_file(&main_config, cf_config_file);
 	if (ok) {
 		/* load users if needed */
-		if (requires_auth_file(cf_auth_type))
+		if (requires_auth_file(cf_auth_type)) {
 			loader_users_check();
+#ifdef HAVE_LDAP
+			load_ldap_user_config();
+#endif
+		}
 		loaded = true;
 	} else if (!loaded) {
 		die("cannot load config file");
@@ -767,6 +775,7 @@ static void main_loop_once(void)
 			log_warning("event_loop failed: %s", strerror(errno));
 	}
 	pam_poll();
+	ldap_poll();
 	per_loop_maint();
 	reuse_just_freed_objects();
 	rescue_timers();
@@ -1003,6 +1012,7 @@ int main(int argc, char *argv[])
 	stats_setup();
 
 	pam_init();
+	auth_ldap_init();
 
 	if (did_takeover) {
 		takeover_finish();
@@ -1026,6 +1036,7 @@ int main(int argc, char *argv[])
 #ifdef CASSERT
 	cleanup();
 #endif
+
 
 	return 0;
 }

@@ -98,7 +98,7 @@ static bool send_client_authreq(PgSocket *client)
 		uint8_t saltlen = 4;
 		get_random_bytes((void*)client->tmp_login_salt, saltlen);
 		SEND_generic(res, client, 'R', "ib", AUTH_MD5, client->tmp_login_salt, saltlen);
-	} else if (auth_type == AUTH_PLAIN || auth_type == AUTH_PAM) {
+	} else if (auth_type == AUTH_PLAIN || auth_type == AUTH_PAM || auth_type == AUTH_LDAP) {
 		SEND_generic(res, client, 'R', "i", AUTH_PLAIN);
 	} else if (auth_type == AUTH_SCRAM_SHA_256) {
 		SEND_generic(res, client, 'R', "iss", AUTH_SASL, "SCRAM-SHA-256", "");
@@ -264,6 +264,7 @@ static bool finish_set_pool(PgSocket *client, bool takeover)
 	case AUTH_PLAIN:
 	case AUTH_MD5:
 	case AUTH_PAM:
+	case AUTH_LDAP:
 	case AUTH_SCRAM_SHA_256:
 		ok = send_client_authreq(client);
 		break;
@@ -700,7 +701,7 @@ static bool handle_client_startup(PgSocket *client, PktHdr *pkt)
 		return false;
 	}
 
-	if (client->wait_for_welcome || client->wait_for_auth) {
+	if ((client->wait_for_welcome) || client->wait_for_auth) {
 		if  (finish_client_login(client)) {
 			/* the packet was already parsed */
 			sbuf_prepare_skip(sbuf, pkt->len);
@@ -845,6 +846,15 @@ static bool handle_client_startup(PgSocket *client, PktHdr *pkt)
 						return false;
 					}
 					pam_auth_begin(client, passwd);
+					return false;
+				}
+
+				if (client->client_auth_type == AUTH_LDAP) {
+					if (!sbuf_pause(&client->sbuf)) {
+						disconnect_client(client, true, "pause failed");
+						return false;
+					}
+					ldap_auth_begin(client, passwd);
 					return false;
 				}
 

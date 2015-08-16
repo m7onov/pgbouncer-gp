@@ -16,12 +16,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* connstring parsing */
-bool parse_database(void *base, const char *name, const char *connstr) _MUSTCHECK;
+/*
+ * LDAP support.
+ */
 
-bool parse_user(void *base, const char *name, const char *params) _MUSTCHECK;
+/*
+ * Defines how many authentication requests can be placed to the waiting queue.
+ * When the queue is full calls to ldap_auth_begin() will block until there is
+ * free space in the queue.
+ */
+#define LDAP_REQUEST_QUEUE_SIZE 20
 
-/* user file parsing */
-bool load_auth_file(const char *fn)  /* _MUSTCHECK */;
-bool loader_users_check(void)  /* _MUSTCHECK */;
-void load_ldap_user_config(void);
+void auth_ldap_init(void);
+void ldap_auth_begin(PgSocket *client, const char *passwd);
+int ldap_poll(void);

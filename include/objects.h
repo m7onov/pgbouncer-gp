@@ -40,8 +40,6 @@ bool release_server(PgSocket *server)		/* _MUSTCHECK */;
 bool finish_client_login(PgSocket *client)	_MUSTCHECK;
 bool check_fast_fail(PgSocket *client)		_MUSTCHECK;
 
-bool PrepareServerLogin(PgSocket *client);
-
 PgSocket *accept_client(int sock, bool is_unix) _MUSTCHECK;
 void disconnect_server(PgSocket *server, bool notify, const char *reason, ...) _PRINTF(3, 4);
 void disconnect_client(PgSocket *client, bool notify, const char *reason, ...) _PRINTF(3, 4);
@@ -73,7 +71,6 @@ bool use_server_socket(int fd, PgAddr *addr, const char *dbname, const char *use
 			_MUSTCHECK;
 
 void activate_client(PgSocket *client);
-void pause_client(PgSocket *client);
 
 void change_client_state(PgSocket *client, SocketState newstate);
 void change_server_state(PgSocket *server, SocketState newstate);
