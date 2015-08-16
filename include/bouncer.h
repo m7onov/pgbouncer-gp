@@ -114,6 +114,7 @@ extern int cf_sbuf_len;
 #include "loader.h"
 #include "client.h"
 #include "server.h"
+#include "auth.h"
 #include "pooler.h"
 #include "proto.h"
 #include "objects.h"
@@ -138,6 +139,8 @@ extern int cf_sbuf_len;
 
 /* matching NAMEDATALEN */
 #define MAX_DBNAME	64
+#define MAX_USERNAME	64
+#define MAX_PASSWORD	256
 
 /*
  * Ought to match NAMEDATALEN.  Some cloud services use longer user

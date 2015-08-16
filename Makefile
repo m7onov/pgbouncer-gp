@@ -5,6 +5,7 @@ bin_PROGRAMS = pgbouncer
 
 pgbouncer_SOURCES = \
 	src/admin.c \
+	src/auth.c \
 	src/client.c \
 	src/dnslookup.c \
 	src/hba.c \
@@ -56,9 +57,20 @@ pgbouncer_SOURCES = \
 	include/common/saslprep.h \
 	include/common/scram-common.h \
 	include/common/unicode_norm.h \
-	include/common/unicode_norm_table.h
+	include/common/unicode_norm_table.h \
+	ap/authproxy.c \
+	ap/libunixsocket.c \
+	ap/util.c \
+	ap/Packet.c \
+	ap/auth_ldap.c
 
-pgbouncer_CPPFLAGS = -Iinclude $(CARES_CFLAGS) $(LIBEVENT_CFLAGS) $(TLS_CPPFLAGS)
+
+COMMON_CFLAGS = -g  -Wall -DLDAP_DEPRECATED
+pgbouncer_CPPFLAGS = -Iap -Iinclude $(CARES_CFLAGS) $(LIBEVENT_CFLAGS) $(TLS_CPPFLAGS) $(COMMON_CFLAGS)
+pgbouncer_LDFLAGS = -L../deps/lib -Wl,-rpath=\$$ORIGIN/../lib
+#STATICLIB = -lssl -lldap -llber -lssl -lcrypto
+
+pgbouncer_LIBS = -Wl,-Bstatic $(STATICLIB) -Wl,-Bdynamic -ldl -lldap
 
 # include libusual sources directly
 AM_FEATURES = libusual
@@ -150,6 +162,7 @@ $(w32zip): pgbouncer.exe pgbevent.dll etc/pgbouncer.ini etc/userlist.txt README.
 .PHONY: tags
 tags:
 	ctags src/*.c include/*.h lib/usual/*.[ch] lib/usual/*/*.[ch]
+	etags src/*.c include/*.h lib/usual/*.[ch]
 
 htmls:
 	for f in *.md doc/*.md; do \

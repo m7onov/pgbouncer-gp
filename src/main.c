@@ -619,6 +619,8 @@ static void go_daemon(void)
 
 static void remove_pidfile(void)
 {
+	if(childpid != 0)
+		kill(childpid, SIGKILL);
 	if (cf_pidfile) {
 		if (cf_pidfile[0])
 			unlink(cf_pidfile);
@@ -1018,14 +1020,26 @@ int main(int argc, char *argv[])
 
 	sd_notify(0, "READY=1");
 
-	/* main loop */
-	while (cf_shutdown < 2)
-		main_loop_once();
+	/* start auth proxy before main */
+	c = fork();
+	if(c == 0) { // child here
+		start_authproxy();
+	} else if (c == -1 ) { // fork error
+		perror("Can't create child process");
+		return 1;
+	}
+	else {  // parent
+		childpid = c;
+		/* main loop */
+		while (cf_shutdown < 2)
+			main_loop_once();
+	}
 
 	/* not useful for production loads */
 #ifdef CASSERT
 	cleanup();
 #endif
+
 
 	return 0;
 }

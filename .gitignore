@@ -23,6 +23,7 @@
 /test/ssl/test.pid
 /test/ssl/TestCA[1-9]/
 
+TAGS
 *.html
 *.xml
 *.exe
