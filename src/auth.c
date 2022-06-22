@@ -189,29 +189,29 @@ bool async_auth_client(PgSocket *client, const char* passwd)
 	//fprintf(stdout,"%d,%d, %s\n",t, len, msg);
 	err = writen(fd, (unsigned char*)&t,1);
     if (err < 0) {
-		log_warning("auth_client error with: %s", strerror(errno));
+		log_warning("auth_client write auth type error with: %s", strerror(errno));
 		goto faill;
 	}
 
 	err = writen(fd, (unsigned char*)&wlen,4);
     if (err < 0) {
-		log_warning("auth_client error with: %s", strerror(errno));
+		log_warning("auth_client write message len error with: %s", strerror(errno));
 		goto faill;
 	}
 
 	err = writen(fd, (unsigned char*)msg, len);
     if (err < 0) {
-		log_warning("auth_client error with: %s", strerror(errno));
+		log_warning("auth_client write message error with: %s", strerror(errno));
 		goto faill;
 	}
 
-    event_set(&pctx->ev, fd, EV_READ,
+    event_assign(&pctx->ev, pgb_event_base, fd, EV_READ,
               auth_eventcb, pctx);
     ts.tv_sec =  AUTH_TIMEOUT;
     ts.tv_usec = 0;
     err = event_add(&pctx->ev, &ts);
     if (err < 0) {
-		log_warning("auth_client error with: %s", strerror(errno));
+		log_warning("auth_client event_add error with: %s", strerror(errno));
 		goto faill;
 	}
 
