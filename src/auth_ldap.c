@@ -538,10 +538,8 @@ checkldapauth(struct ldap_auth_request *request)
 	LDAP *ldap;
 	int r;
 	char fulluser[LDAP_LONG_LENGTH];
-	char ldap_config[MAX_LDAP_CONFIG];
 
-	safe_strcpy(ldap_config, request->client->login_user->ldap_config, MAX_LDAP_CONFIG);
-	if (!ldap_initialize_parameters(request, ldap_config)) {
+	if (!ldap_initialize_parameters(request, request->client->ldap_parameters)) {
 		return false;
 	}
 	if (!request->ldapserver || request->ldapserver[0] == '\0') {

@@ -194,6 +194,9 @@ static bool finish_set_pool(PgSocket *client, bool takeover)
 {
 	bool ok = false;
 	int auth;
+#ifdef HAVE_LDAP
+	char *ldap_content = NULL;
+#endif
 
 	if (!client->login_user->mock_auth) {
 		PgUser *pool_user;
@@ -240,6 +243,15 @@ static bool finish_set_pool(PgSocket *client, bool takeover)
 	if (auth == AUTH_HBA) {
 		auth = hba_eval(parsed_hba, &client->remote_addr, !!client->sbuf.tls,
 				client->db->name, client->login_user->name);
+#ifdef HAVE_LDAP
+		if (auth == AUTH_LDAP) {
+			ldap_content = get_hba_complexline(parsed_hba, &client->remote_addr, !!client->sbuf.tls,
+											   client->db->name, client->login_user->name);
+			if (ldap_content) {
+				snprintf(client->ldap_parameters, MAX_LDAP_CONFIG, "%s", ldap_content);
+			}
+		}
+#endif
 	}
 
 	if (auth == AUTH_MD5)

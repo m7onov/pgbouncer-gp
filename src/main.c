@@ -105,7 +105,6 @@ char *cf_auth_file;
 char *cf_auth_hba_file;
 char *cf_auth_user;
 char *cf_auth_query;
-char *cf_ldap_user_file;
 
 int cf_max_client_conn;
 int cf_default_pool_size;
@@ -224,7 +223,6 @@ static const struct CfKey bouncer_params [] = {
 CF_ABS("admin_users", CF_STR, cf_admin_users, 0, ""),
 CF_ABS("application_name_add_host", CF_INT, cf_application_name_add_host, 0, "0"),
 CF_ABS("auth_file", CF_STR, cf_auth_file, 0, NULL),
-CF_ABS("cf_ldap_user_file", CF_STR, cf_ldap_user_file, 0, NULL),
 CF_ABS("auth_hba_file", CF_STR, cf_auth_hba_file, 0, ""),
 CF_ABS("auth_query", CF_STR, cf_auth_query, 0, "SELECT usename, passwd FROM pg_shadow WHERE usename=$1"),
 CF_ABS("auth_type", CF_LOOKUP(auth_type_map), cf_auth_type, 0, "md5"),
@@ -428,9 +426,6 @@ void load_config(void)
 		/* load users if needed */
 		if (requires_auth_file(cf_auth_type)) {
 			loader_users_check();
-#ifdef HAVE_LDAP
-			load_ldap_user_config();
-#endif
 		}
 		loaded = true;
 	} else if (!loaded) {

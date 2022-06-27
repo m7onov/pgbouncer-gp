@@ -334,9 +334,6 @@ struct PgUser {
 	struct AANode tree_node;	/* used to attach user to tree */
 	char name[MAX_USERNAME];
 	char passwd[MAX_PASSWORD];
-#ifdef HAVE_LDAP
-	char ldap_config[MAX_LDAP_CONFIG];
-#endif
 	uint8_t scram_ClientKey[32];
 	uint8_t scram_ServerKey[32];
 	bool has_scram_keys;		/* true if the above two are valid */
@@ -458,6 +455,9 @@ struct PgSocket {
 		uint8_t ServerKey[32];
 	} scram_state;
 
+#ifdef HAVE_LDAP
+	char ldap_parameters[MAX_LDAP_CONFIG];
+#endif
 	VarCache vars;		/* state of interesting server parameters */
 
 	SBuf sbuf;		/* stream buffer, must be last */
@@ -526,7 +526,6 @@ extern char *cf_auth_file;
 extern char *cf_auth_query;
 extern char *cf_auth_user;
 extern char *cf_auth_hba_file;
-extern char *cf_ldap_user_file;
 
 extern char *cf_pidfile;
 
