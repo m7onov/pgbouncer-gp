@@ -52,7 +52,7 @@ struct HBARule {
 	struct HBAName db_name;
 	struct HBAName user_name;
 #ifdef HAVE_LDAP
-	char *line_after_method;
+	char *auth_options;
 #endif
 };
 
@@ -464,7 +464,7 @@ static void rule_free(struct HBARule *rule)
 	strset_free(rule->db_name.name_set);
 	strset_free(rule->user_name.name_set);
 #ifdef HAVE_LDAP
-	free(rule->line_after_method);
+	free(rule->auth_options);
 #endif
 	free(rule);
 }
@@ -615,8 +615,8 @@ static bool parse_line(struct HBA *hba, struct TokParser *tp, int linenr, const 
 
 #ifdef HAVE_LDAP
 	if (rule->rule_method == AUTH_LDAP) {
-		if ((rule->line_after_method = strdup(tp->pos)) == NULL) {
-			log_warning("hba line %d: cannot get line_after_method: buf=%s", linenr, tp->pos);
+		if ((rule->auth_options = strdup(tp->pos)) == NULL) {
+			log_warning("hba line %d: cannot get auth_options: buf=%s", linenr, tp->pos);
 			goto failed;
 		}
 		eat_all(tp);
@@ -727,7 +727,7 @@ static bool match_inet6(const struct HBARule *rule, PgAddr *addr)
 		(src[2] & mask[2]) == base[2] && (src[3] & mask[3]) == base[3];
 }
 
-int hba_eval(struct HBA *hba, PgAddr *addr, bool is_tls, const char *dbname, const char *username)
+int hba_eval(struct HBA *hba, PgAddr *addr, bool is_tls, const char *dbname, const char *username, char **dst)
 {
 	struct List *el;
 	struct HBARule *rule;
@@ -766,54 +766,15 @@ int hba_eval(struct HBA *hba, PgAddr *addr, bool is_tls, const char *dbname, con
 		if (!name_match(&rule->user_name, username, unamelen, dbname))
 			continue;
 
+#ifdef HAVE_LDAP
+		if (rule->rule_method == AUTH_LDAP) {
+			if (dst != NULL) {
+				*dst = rule->auth_options;
+			}
+		}
+#endif
 		/* rule matches */
 		return rule->rule_method;
 	}
 	return AUTH_REJECT;
 }
-#ifdef HAVE_LDAP
-char *get_hba_complexline(struct HBA *hba, PgAddr *addr, bool is_tls, const char *dbname, const char *username)
-{
-	struct List *el;
-	struct HBARule *rule;
-	unsigned int dbnamelen = strlen(dbname);
-	unsigned int unamelen = strlen(username);
-
-	if (!hba)
-		return NULL;
-
-	list_for_each(el, &hba->rules) {
-		rule = container_of(el, struct HBARule, node);
-
-		/* match address */
-		if (pga_is_unix(addr)) {
-			if (rule->rule_type != RULE_LOCAL)
-				continue;
-		} else if (rule->rule_type == RULE_LOCAL) {
-			continue;
-		} else if (rule->rule_type == RULE_HOSTSSL && !is_tls) {
-			continue;
-		} else if (rule->rule_type == RULE_HOSTNOSSL && is_tls) {
-			continue;
-		} else if (rule->rule_af == AF_INET) {
-			if (!match_inet4(rule, addr))
-				continue;
-		} else if (rule->rule_af == AF_INET6) {
-			if (!match_inet6(rule, addr))
-				continue;
-		} else {
-			continue;
-		}
-
-		/* match db & user */
-		if (!name_match(&rule->db_name, dbname, dbnamelen, username))
-			continue;
-		if (!name_match(&rule->user_name, username, unamelen, dbname))
-			continue;
-
-		/* rule matches */
-		return rule->line_after_method;
-	}
-	return NULL;
-}
-#endif

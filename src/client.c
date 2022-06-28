@@ -241,12 +241,13 @@ static bool finish_set_pool(PgSocket *client, bool takeover)
 
 	auth = cf_auth_type;
 	if (auth == AUTH_HBA) {
+#ifndef HAVE_LDAP
 		auth = hba_eval(parsed_hba, &client->remote_addr, !!client->sbuf.tls,
-				client->db->name, client->login_user->name);
-#ifdef HAVE_LDAP
+				client->db->name, client->login_user->name, NULL);
+#else
+		auth = hba_eval(parsed_hba, &client->remote_addr, !!client->sbuf.tls,
+						client->db->name, client->login_user->name, &ldap_content);
 		if (auth == AUTH_LDAP) {
-			ldap_content = get_hba_complexline(parsed_hba, &client->remote_addr, !!client->sbuf.tls,
-											   client->db->name, client->login_user->name);
 			if (ldap_content) {
 				snprintf(client->ldap_parameters, MAX_LDAP_CONFIG, "%s", ldap_content);
 			}
@@ -713,7 +714,7 @@ static bool handle_client_startup(PgSocket *client, PktHdr *pkt)
 		return false;
 	}
 
-	if ((client->wait_for_welcome) || client->wait_for_auth) {
+	if (client->wait_for_welcome || client->wait_for_auth) {
 		if  (finish_client_login(client)) {
 			/* the packet was already parsed */
 			sbuf_prepare_skip(sbuf, pkt->len);
