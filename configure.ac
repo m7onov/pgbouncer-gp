@@ -92,7 +92,7 @@ AC_ARG_WITH(ldap,
         AC_SEARCH_LIBS(ldap_initialize, ldap, [have_libldap=t])
         AC_SEARCH_LIBS(pthread_create, pthread, [], [have_pthreads=no])
         if test x"${have_pthreads}" != xyes; then
-           AC_MSG_ERROR([pthread library should be available for PAM support])
+           AC_MSG_ERROR([pthread library should be available for LDAP support])
         fi
         if test x"${have_ldap_header}" != x -a x"${have_libldap}" != x -a x"${have_pthreads}" = xyes; then
           ldap_support=yes
