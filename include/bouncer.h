@@ -122,6 +122,7 @@ extern int cf_sbuf_len;
 #include "janitor.h"
 #include "hba.h"
 #include "pam.h"
+#include "auth_ldap.h"
 
 #ifndef WIN32
 #define DEFAULT_UNIX_SOCKET_DIR "/tmp"
@@ -138,7 +139,6 @@ extern int cf_sbuf_len;
 
 /* matching NAMEDATALEN */
 #define MAX_DBNAME	64
-
 /*
  * Ought to match NAMEDATALEN.  Some cloud services use longer user
  * names, so give it some extra room.
@@ -153,6 +153,10 @@ extern int cf_sbuf_len;
  */
 #define MAX_PASSWORD	996
 
+#ifdef HAVE_LDAP
+/* Hope this length is long enough for ldap config line */
+#define MAX_LDAP_CONFIG 1024
+#endif
 /*
  * AUTH_* symbols are used for both protocol handling and
  * configuration settings (auth_type, hba).  Some are only applicable
@@ -185,6 +189,7 @@ extern int cf_sbuf_len;
 #define AUTH_REJECT	110
 #define AUTH_PAM	111
 #define AUTH_SCRAM_SHA_256	112
+#define AUTH_LDAP   113
 
 /* type codes for weird pkts */
 #define PKT_STARTUP_V2  0x20000
@@ -407,7 +412,7 @@ struct PgSocket {
 	bool wait_for_welcome:1;/* client: no server yet in pool, cannot send welcome msg */
 	bool wait_for_user_conn:1;/* client: waiting for auth_conn server connection */
 	bool wait_for_user:1;	/* client: waiting for auth_conn query results */
-	bool wait_for_auth:1;	/* client: waiting for external auth (PAM) to be completed */
+	bool wait_for_auth:1;	/* client: waiting for external auth (PAM/LDAP) to be completed */
 
 	bool suspended:1;	/* client/server: if the socket is suspended */
 
@@ -450,6 +455,9 @@ struct PgSocket {
 		uint8_t ServerKey[32];
 	} scram_state;
 
+#ifdef HAVE_LDAP
+	char ldap_parameters[MAX_LDAP_CONFIG];
+#endif
 	VarCache vars;		/* state of interesting server parameters */
 
 	SBuf sbuf;		/* stream buffer, must be last */
