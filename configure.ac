@@ -249,6 +249,12 @@ elif test "$ac_cv_usual_glibc_gaia" = "yes"; then
 else
   echo "  adns    = compat"
 fi
+if test -f ldap_configured; then
+	rm -f ldap_configured
+fi
+if test "$ldap_support" = "yes"; then
+        echo "Yes" > ldap_configured
+fi
 echo "  pam     = $pam_support"
 echo "  ldap    = $ldap_support"
 echo "  systemd = $with_systemd"
