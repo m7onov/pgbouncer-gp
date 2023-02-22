@@ -1,0 +1,115 @@
+## ======================================================================
+## resources
+## ======================================================================
+
+resource_types:
+  - name: gcs
+    type: docker-image
+    source:
+      repository: frodenas/gcs-resource
+
+resources:
+  - name: pgbouncer_src
+    type: git
+    source:
+      access_token: ((gpdb-git-access-token))
+      branch: {{git-branch}}
+      repo: greenplum-db/pgbouncer
+      uri: https://github.com/greenplum-db/pgbouncer.git
+
+  - name: gpdb7_src
+    source:
+      branch: main
+      ignore_paths:
+        - gpdb-doc/*
+        - README*
+      uri: https://github.com/greenplum-db/gpdb.git
+    type: git
+
+  - name: gpdb7-rocky8-build
+    source:
+      repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-build
+      tag: latest
+    type: registry-image
+
+  - name: gpdb7-rocky8-test
+    source:
+      repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-test
+      tag: latest
+    type: registry-image
+
+  - name: bin_gpdb7_rocky8
+    source:
+      bucket: pivotal-gpdb-concourse-resources-intermediates-prod
+      json_key: ((concourse-gcs-resources-service-account-key))
+      versioned_file: gpdb_main/bin_gpdb_rocky8/bin_gpdb.tar.gz
+    type: gcs
+
+  - name: intermediates_pkg_gpdb7_rocky8
+    type: gcs
+    source:
+      bucket: ((dataflow/gpdb7-pgbouncer-bucket-name))
+      json_key: ((dataflow/concourse-gcs-resources-service-account-key))
+      regexp: pgbouncer/published/gpdb7/pgbouncer-(.*)-rocky8_x86_64.tar.gz
+
+  - name: component_pkg_gpdb7_rocky8
+    type: gcs
+    source:
+      bucket: ((dataflow/gpdb7-pgbouncer-bucket-name))
+      json_key: ((dataflow/concourse-gcs-resources-service-account-key))
+      regexp: pgbouncer/released/gpdb7/pgbouncer-(.*)-rocky8_x86_64.tar.gz
+
+jobs:
+  - name: rocky8_build_and_test
+    plan:
+      - in_parallel:
+          steps:
+          - get: pgbouncer_src
+            trigger: true
+          - get: gpdb7-rocky8-test
+          - get: gpdb7-rocky8-build
+          - get: gpdb7_src
+          - get: bin_gpdb
+            resource: bin_gpdb7_rocky8
+      - task: build_pgbouncer
+        input_mapping:
+          pgbouncer_src: pgbouncer_src
+        config:
+          platform: linux
+          inputs:
+            - name: pgbouncer_src
+          outputs:
+            - name: pgbouncer_compiled
+          run:
+            path: pgbouncer_src/concourse/scripts/build.bash
+        image: gpdb7-rocky8-build
+        params:
+          TARGET_OS: rocky8
+        timeout: 30m
+      - task: psql_test
+        input_mapping:
+          pgbouncer_src: pgbouncer_compiled
+          gpdb_src: gpdb7_src
+        config:
+          platform: linux
+          inputs:
+            - name: pgbouncer_src
+            - name: gpdb_src
+            - name: bin_gpdb
+          run:
+            path: pgbouncer_src/concourse/scripts/psql_test.bash
+        image: gpdb7-rocky8-test
+        params:
+          TARGET_OS: rocky8
+        timeout: 30m
+      - put: intermediates_pkg_gpdb7_rocky8
+        params:
+          file: pgbouncer_compiled/pgbouncer-*.tar.gz
+  - name: push_to_gpdb_release
+    plan:
+      - get: intermediates_pkg_gpdb7_rocky8
+        passed:
+        - rocky8_build_and_test
+      - put: component_pkg_gpdb7_rocky8
+        params:
+          file: intermediates_pkg_gpdb7_rocky8/pgbouncer-*.tar.gz
