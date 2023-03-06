@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+if [[ $1 == "--help" ]]; then
+    echo "Make sure GPHOME environment variable is set, then run this file to install pgbouncer"
+    exit 0
+fi
+if [[ -z "${GPHOME}" ]]; then
+    echo "Error: Environment Variable GPHOME not set!!"
+    exit 1
+fi
+
+cp -av bin share $GPHOME
+if [ $? -eq 0 ]; then
+    echo "Install Done"
+fi
