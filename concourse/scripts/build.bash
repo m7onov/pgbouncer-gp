@@ -42,11 +42,13 @@ function build_tar_for_release() {
     fi
     pushd pgbouncer_src
     cp concourse/scripts/install_gpdb_component ${HOME_DIR}/bin_pgbouncer/
+    useradd gpadmin
+    chown -R gpadmin:gpadmin ${HOME_DIR}/bin_pgbouncer/
     pgbouncer_tag=$(git describe --tags --abbrev=0)
     pgbouncer_version=${pgbouncer_tag#"pgbouncer_"}
     pgbouncer_version_dot=${pgbouncer_version//_/\.}
 
-    tar -zcvf pgbouncer-gpdb7-${pgbouncer_version_dot}-${platform}_x86_64.tar.gz -C ${HOME_DIR} bin_pgbouncer
+    tar -zcvf pgbouncer-gpdb7-${pgbouncer_version_dot}-${platform}_x86_64.tar.gz -C ${HOME_DIR}/bin_pgbouncer/ .
     popd
 }
 
